@@ -22,7 +22,7 @@ Elliott Wave 이론을 활용하여 주식 가격을 예측하는 웹 애플리�
 
 1. 저장소 클론
 ```bash
-git clone <repository-url>
+git clone https://github.com/waterfirst-suji/chumul.git
 cd chumul
 ```
 
