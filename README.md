@@ -86,8 +86,42 @@ chumul/
 ├── predictor.py        # 주가 예측 모듈
 ├── requirements.txt    # Python 패키지 의존성
 ├── .gitignore         # Git 무시 파일
-└── README.md          # 프로젝트 문서
+├── README.md          # 프로젝트 문서
+└── rig-rust/          # 🧐 RIG (Retrieval Interleaved Generation) Rust 구현
+    ├── src/
+    │   ├── retrieval/  # 문서 검색 시스템
+    │   ├── llm/        # LLM API 인터페이스
+    │   ├── engine/     # RIG 엔진
+    │   └── main.rs     # 데모 애플리케이션
+    ├── Cargo.toml
+    └── README.md
 ```
+
+## 🧐 RIG (Retrieval Interleaved Generation)
+
+이 프로젝트에는 Rust로 구현한 **RIG (Retrieval Interleaved Generation)** 시스템이 포함되어 있습니다.
+
+### RIG란?
+RIG는 AI가 답변을 생성하는 도중에 필요한 정보를 실시간으로 검색하여 끼워 넣는 기법입니다.
+
+**RAG vs RIG:**
+- **RAG**: 질문 → 검색 → 생성 (한 번만 검색)
+- **RIG**: 질문 → 생성 → 검색 → 생성 → 검색 → ... (반복)
+
+### RIG의 장점
+- ✓ 더 정확한 답변
+- ✓ 동적 정보 검색
+- ✓ 환각(Hallucination) 감소
+- ✓ 복잡한 추론에 강함
+
+### RIG 프로젝트 실행
+
+```bash
+cd rig-rust
+cargo run
+```
+
+자세한 내용은 [rig-rust/README.md](rig-rust/README.md)를 참고하세요.
 
 ## 📖 Elliott Wave 이론
 

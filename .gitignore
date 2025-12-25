@@ -15,3 +15,8 @@ build/
 .vscode/
 *.log
 .streamlit/secrets.toml
+
+# Rust
+rig-rust/target/
+rig-rust/Cargo.lock
+**/*.rs.bk
