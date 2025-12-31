@@ -73,6 +73,8 @@ m × λ = 2 × n_eff × d × cos(θ)
 ```
 oled_cavity_simulator.py  # 핵심 물리 모델 및 시뮬레이션 로직
 oled_app.py               # Streamlit 기반 인터랙티브 UI
+oled_viewer.html          # HTML 기본 버전 시뮬레이터
+oled_advanced.html        # HTML 고급 버전 (Chart.js 사용)
 README_OLED.md            # 문서 (이 파일)
 ```
 
@@ -100,7 +102,32 @@ OLED 파라미터를 정의하는 데이터 클래스:
 
 ## 사용 방법
 
-### 1. 설치
+### 1. HTML 버전 (가장 간단 - 설치 불필요)
+
+브라우저에서 직접 실행:
+
+**기본 버전:**
+```bash
+# 파일을 브라우저에서 열기
+open oled_viewer.html  # Mac
+start oled_viewer.html # Windows
+xdg-open oled_viewer.html # Linux
+```
+
+**고급 버전 (Chart.js 포함):**
+```bash
+open oled_advanced.html
+```
+
+#### HTML 버전 기능:
+- ✅ 설치 불필요 - 브라우저만 있으면 됨
+- ✅ 실시간 각도 조절 슬라이더
+- ✅ 자동 애니메이션 모드
+- ✅ RGB 스펙트럼 실시간 시각화
+- ✅ 파장 shift 및 강도 변화 표시
+- ✅ 3개 탭: 실시간 시뮬레이션 / 데이터 분석 / 스펙트럼 비교
+
+### 2. Python 설치 버전
 
 필요한 패키지가 이미 `requirements.txt`에 포함되어 있습니다:
 
@@ -108,7 +135,7 @@ OLED 파라미터를 정의하는 데이터 클래스:
 pip install -r requirements.txt
 ```
 
-### 2. 커맨드라인에서 시뮬레이션 실행
+#### 2-1. 커맨드라인에서 시뮬레이션 실행
 
 ```bash
 python oled_cavity_simulator.py
@@ -135,7 +162,7 @@ RED OLED:
     60° → 589.3 nm (shift: -35.7 nm, intensity: 0.500)
 ```
 
-### 3. 웹 앱 실행
+#### 2-2. Streamlit 웹 앱 실행
 
 ```bash
 streamlit run oled_app.py
