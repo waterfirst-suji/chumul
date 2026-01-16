@@ -209,10 +209,38 @@ header h1 {
     font-style: italic;
 }
 
+.text-content .history-item {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.text-content .history-item:last-child {
+    border-bottom: none;
+}
+
+.text-content .interim {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.text-content .current {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.text-content .translating {
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+}
+
 .controls {
     display: flex;
     justify-content: center;
+    gap: 16px;
     margin-bottom: 20px;
+    flex-wrap: wrap;
 }
 
 .mic-btn {
@@ -347,4 +375,58 @@ footer p {
 
 .target-panel .text-content {
     background: linear-gradient(135deg, #f8f9fa 0%, #e8f0fe 100%);
+}
+
+/* 저장 버튼 */
+.save-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 28px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    background: linear-gradient(135deg, #34a853 0%, #2e8b47 100%);
+    color: white;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(52, 168, 83, 0.4);
+}
+
+.save-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(52, 168, 83, 0.5);
+}
+
+.save-icon {
+    width: 24px;
+    height: 24px;
+}
+
+/* 지우기 버튼 */
+.clear-all-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 28px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    background: linear-gradient(135deg, #ea4335 0%, #c5221f 100%);
+    color: white;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(234, 67, 53, 0.4);
+}
+
+.clear-all-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(234, 67, 53, 0.5);
+}
+
+.clear-icon {
+    width: 24px;
+    height: 24px;
 }

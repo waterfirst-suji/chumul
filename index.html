@@ -69,17 +69,15 @@
             <div class="panel source-panel">
                 <div class="panel-header">
                     <span id="sourceLabel">한국어 (음성 입력)</span>
-                    <button id="clearSource" class="clear-btn">지우기</button>
                 </div>
                 <div class="text-content" id="sourceText">
-                    <p class="placeholder">마이크 버튼을 눌러 말하세요...</p>
+                    <p class="placeholder">시작 버튼을 눌러 말하세요...</p>
                 </div>
             </div>
 
             <div class="panel target-panel">
                 <div class="panel-header">
                     <span id="targetLabel">English (번역)</span>
-                    <button id="copyTarget" class="copy-btn">복사</button>
                 </div>
                 <div class="text-content" id="targetText">
                     <p class="placeholder">번역 결과가 여기에 표시됩니다...</p>
@@ -93,7 +91,19 @@
                     <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
                     <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
                 </svg>
-                <span>말하기</span>
+                <span>시작</span>
+            </button>
+            <button id="saveBtn" class="save-btn">
+                <svg class="save-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/>
+                </svg>
+                <span>저장</span>
+            </button>
+            <button id="clearAllBtn" class="clear-all-btn">
+                <svg class="clear-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+                <span>지우기</span>
             </button>
         </div>
 

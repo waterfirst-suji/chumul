@@ -5,6 +5,10 @@ class TranslateGemmaApp {
         this.recognition = null;
         this.apiKey = localStorage.getItem('hf_api_key') || '';
 
+        // 번역 기록 저장
+        this.translationHistory = [];
+        this.currentSourceText = '';
+
         this.initElements();
         this.initSpeechRecognition();
         this.initEventListeners();
@@ -13,6 +17,8 @@ class TranslateGemmaApp {
 
     initElements() {
         this.micBtn = document.getElementById('micBtn');
+        this.saveBtn = document.getElementById('saveBtn');
+        this.clearAllBtn = document.getElementById('clearAllBtn');
         this.sourceText = document.getElementById('sourceText');
         this.targetText = document.getElementById('targetText');
         this.sourceLang = document.getElementById('sourceLang');
@@ -21,8 +27,6 @@ class TranslateGemmaApp {
         this.targetLabel = document.getElementById('targetLabel');
         this.apiKeyInput = document.getElementById('apiKey');
         this.swapBtn = document.getElementById('swapLang');
-        this.clearBtn = document.getElementById('clearSource');
-        this.copyBtn = document.getElementById('copyTarget');
         this.status = document.getElementById('status');
     }
 
@@ -47,12 +51,12 @@ class TranslateGemmaApp {
                     <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
                     <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
                 </svg>
-                <span>듣는 중...</span>
+                <span>중지</span>
                 <div class="listening-indicator">
                     <span></span><span></span><span></span><span></span>
                 </div>
             `;
-            this.showStatus('음성을 듣고 있습니다...', 'info');
+            this.showStatus('음성을 듣고 있습니다... (실시간 번역 중)', 'info');
         };
 
         this.recognition.onend = () => {
@@ -63,7 +67,7 @@ class TranslateGemmaApp {
                     <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
                     <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
                 </svg>
-                <span>말하기</span>
+                <span>시작</span>
             `;
             this.hideStatus();
         };
@@ -81,10 +85,10 @@ class TranslateGemmaApp {
                 }
             }
 
-            // 현재 텍스트 표시
+            // 현재 텍스트 표시 (기존 기록 + 현재 입력)
             const currentText = finalTranscript || interimTranscript;
             if (currentText) {
-                this.sourceText.innerHTML = `<p>${currentText}</p>`;
+                this.displaySourceText(currentText, !event.results[event.results.length - 1].isFinal);
             }
 
             // 최종 결과면 번역 실행
@@ -114,8 +118,14 @@ class TranslateGemmaApp {
     }
 
     initEventListeners() {
-        // 마이크 버튼
+        // 시작/중지 버튼
         this.micBtn.addEventListener('click', () => this.toggleListening());
+
+        // 저장 버튼
+        this.saveBtn.addEventListener('click', () => this.saveTranslation());
+
+        // 지우기 버튼
+        this.clearAllBtn.addEventListener('click', () => this.clearAll());
 
         // 언어 선택 변경
         this.sourceLang.addEventListener('change', () => {
@@ -140,20 +150,15 @@ class TranslateGemmaApp {
             setTimeout(() => this.hideStatus(), 2000);
         });
 
-        // 지우기 버튼
-        this.clearBtn.addEventListener('click', () => {
-            this.sourceText.innerHTML = '<p class="placeholder">마이크 버튼을 눌러 말하세요...</p>';
-            this.targetText.innerHTML = '<p class="placeholder">번역 결과가 여기에 표시됩니다...</p>';
-        });
-
-        // 복사 버튼
-        this.copyBtn.addEventListener('click', () => this.copyTranslation());
-
         // 키보드 단축키
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && e.ctrlKey) {
                 e.preventDefault();
                 this.toggleListening();
+            }
+            if (e.code === 'KeyS' && e.ctrlKey) {
+                e.preventDefault();
+                this.saveTranslation();
             }
         });
     }
@@ -221,15 +226,33 @@ class TranslateGemmaApp {
         this.updateLabels();
         this.updateRecognitionLanguage();
         this.saveSettings();
+    }
 
-        // 텍스트도 교환
-        const sourceContent = this.sourceText.innerHTML;
-        const targetContent = this.targetText.innerHTML;
+    displaySourceText(currentText, isInterim = false) {
+        // 기존 기록과 현재 텍스트 합쳐서 표시
+        let html = '';
 
-        if (!sourceContent.includes('placeholder') && !targetContent.includes('placeholder')) {
-            this.sourceText.innerHTML = targetContent;
-            this.targetText.innerHTML = sourceContent;
+        // 기존 번역된 문장들
+        this.translationHistory.forEach(item => {
+            html += `<p class="history-item">${item.source}</p>`;
+        });
+
+        // 현재 입력 중인 텍스트
+        if (currentText) {
+            html += `<p class="${isInterim ? 'interim' : 'current'}">${currentText}</p>`;
         }
+
+        this.sourceText.innerHTML = html || '<p class="placeholder">시작 버튼을 눌러 말하세요...</p>';
+    }
+
+    displayTargetText() {
+        let html = '';
+
+        this.translationHistory.forEach(item => {
+            html += `<p class="history-item">${item.target}</p>`;
+        });
+
+        this.targetText.innerHTML = html || '<p class="placeholder">번역 결과가 여기에 표시됩니다...</p>';
     }
 
     async translateText(text) {
@@ -238,8 +261,13 @@ class TranslateGemmaApp {
             return;
         }
 
-        this.showStatus('번역 중...', 'info');
-        this.targetText.innerHTML = '<p>번역 중... <span class="loading"></span></p>';
+        // 번역 중 표시 추가
+        let tempHtml = '';
+        this.translationHistory.forEach(item => {
+            tempHtml += `<p class="history-item">${item.target}</p>`;
+        });
+        tempHtml += '<p class="translating">번역 중... <span class="loading"></span></p>';
+        this.targetText.innerHTML = tempHtml;
 
         const langNames = {
             ko: 'Korean', en: 'English', ja: 'Japanese', zh: 'Chinese',
@@ -259,7 +287,6 @@ ${text}<end_of_turn>
 `;
 
         try {
-            // TranslateGemma 모델 사용 (4B, 12B, 27B 중 12B 사용)
             const response = await fetch(
                 'https://api-inference.huggingface.co/models/google/translategemma-12b-it',
                 {
@@ -286,9 +313,7 @@ ${text}<end_of_turn>
                 if (response.status === 401) {
                     throw new Error('API 키가 유효하지 않습니다.');
                 } else if (response.status === 503) {
-                    // 모델이 로딩 중일 때
                     this.showStatus('모델을 로딩 중입니다. 잠시 후 다시 시도해주세요...', 'warning');
-                    this.targetText.innerHTML = '<p class="placeholder">모델 로딩 중... 20-30초 후 다시 시도해주세요.</p>';
                     return;
                 } else {
                     throw new Error(errorData.error || `HTTP ${response.status} 오류`);
@@ -312,27 +337,91 @@ ${text}<end_of_turn>
                 .replace(/<start_of_turn>.*?/g, '')
                 .trim();
 
-            this.targetText.innerHTML = `<p>${translation}</p>`;
+            // 번역 기록에 추가
+            this.translationHistory.push({
+                source: text,
+                target: translation,
+                timestamp: new Date().toISOString()
+            });
+
+            // 화면 업데이트
+            this.displaySourceText('');
+            this.displayTargetText();
+
             this.showStatus('번역 완료!', 'success');
-            setTimeout(() => this.hideStatus(), 2000);
+            setTimeout(() => {
+                if (this.isListening) {
+                    this.showStatus('음성을 듣고 있습니다... (실시간 번역 중)', 'info');
+                } else {
+                    this.hideStatus();
+                }
+            }, 1000);
 
         } catch (error) {
             console.error('Translation error:', error);
             this.showStatus(`번역 오류: ${error.message}`, 'error');
-            this.targetText.innerHTML = '<p class="placeholder">번역 중 오류가 발생했습니다.</p>';
+            this.displayTargetText();
         }
     }
 
-    copyTranslation() {
-        const text = this.targetText.textContent;
-        if (text && !text.includes('번역 결과가 여기에')) {
-            navigator.clipboard.writeText(text).then(() => {
-                this.showStatus('클립보드에 복사되었습니다!', 'success');
-                setTimeout(() => this.hideStatus(), 2000);
-            }).catch(() => {
-                this.showStatus('복사에 실패했습니다.', 'error');
-            });
+    clearAll() {
+        // 모든 기록 초기화
+        this.translationHistory = [];
+        this.currentSourceText = '';
+
+        this.sourceText.innerHTML = '<p class="placeholder">시작 버튼을 눌러 말하세요...</p>';
+        this.targetText.innerHTML = '<p class="placeholder">번역 결과가 여기에 표시됩니다...</p>';
+
+        this.showStatus('모든 내용이 지워졌습니다.', 'success');
+        setTimeout(() => this.hideStatus(), 2000);
+    }
+
+    saveTranslation() {
+        if (this.translationHistory.length === 0) {
+            this.showStatus('저장할 번역 내용이 없습니다.', 'warning');
+            return;
         }
+
+        const langNames = {
+            ko: '한국어', en: 'English', ja: '日本語', zh: '中文',
+            es: 'Español', fr: 'Français', de: 'Deutsch', pt: 'Português',
+            ru: 'Русский', ar: 'العربية', hi: 'हिन्दी', vi: 'Tiếng Việt',
+            th: 'ไทย', id: 'Bahasa Indonesia'
+        };
+
+        // 텍스트 파일 내용 생성
+        let content = `TranslateGemma 번역 결과\n`;
+        content += `${'='.repeat(50)}\n`;
+        content += `날짜: ${new Date().toLocaleString('ko-KR')}\n`;
+        content += `번역 방향: ${langNames[this.sourceLang.value]} → ${langNames[this.targetLang.value]}\n`;
+        content += `${'='.repeat(50)}\n\n`;
+
+        this.translationHistory.forEach((item, index) => {
+            content += `[${index + 1}]\n`;
+            content += `원문: ${item.source}\n`;
+            content += `번역: ${item.target}\n\n`;
+        });
+
+        content += `${'='.repeat(50)}\n`;
+        content += `총 ${this.translationHistory.length}개 문장 번역됨\n`;
+
+        // 파일 다운로드
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+
+        const now = new Date();
+        const filename = `translation_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}.txt`;
+
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        this.showStatus(`${filename} 파일로 저장되었습니다.`, 'success');
+        setTimeout(() => this.hideStatus(), 3000);
     }
 
     showStatus(message, type) {
