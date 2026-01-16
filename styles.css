@@ -128,7 +128,14 @@ header h1 {
     font-weight: 500;
 }
 
+.api-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .api-settings input {
+    flex: 1;
     padding: 10px 12px;
     font-size: 0.95rem;
     border: 2px solid var(--border);
@@ -139,6 +146,101 @@ header h1 {
 .api-settings input:focus {
     outline: none;
     border-color: var(--primary);
+}
+
+/* 신호등 스타일 */
+.api-status {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 8px;
+    background: #333;
+    border-radius: 8px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.api-status .light {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    transition: all 0.3s;
+}
+
+.api-status .light.red {
+    background: #4a1a1a;
+    box-shadow: none;
+}
+
+.api-status .light.yellow {
+    background: #4a4a1a;
+    box-shadow: none;
+}
+
+.api-status .light.green {
+    background: #1a4a1a;
+    box-shadow: none;
+}
+
+/* 신호등 상태 */
+.api-status.disconnected .light.red {
+    background: #ea4335;
+    box-shadow: 0 0 10px #ea4335, 0 0 20px #ea4335;
+}
+
+.api-status.checking .light.yellow {
+    background: #fbbc05;
+    box-shadow: 0 0 10px #fbbc05, 0 0 20px #fbbc05;
+    animation: blink 0.5s infinite;
+}
+
+.api-status.connected .light.green {
+    background: #34a853;
+    box-shadow: 0 0 10px #34a853, 0 0 20px #34a853;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.test-api-btn {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    background: var(--primary);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.test-api-btn:hover {
+    background: var(--primary-dark);
+}
+
+.test-api-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.api-message {
+    font-size: 0.8rem;
+    padding: 4px 0;
+    min-height: 20px;
+}
+
+.api-message.success {
+    color: var(--success);
+}
+
+.api-message.error {
+    color: var(--error);
+}
+
+.api-message.checking {
+    color: var(--warning);
 }
 
 .api-settings small {

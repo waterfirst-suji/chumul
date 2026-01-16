@@ -4,15 +4,45 @@ class TranslateGemmaApp {
         this.isListening = false;
         this.recognition = null;
         this.apiKey = localStorage.getItem('hf_api_key') || '';
+        this.apiConnected = false;
 
         // 번역 기록 저장
         this.translationHistory = [];
 
         // 무음 타이머 (10초)
-        this.silenceTimeout = null;
         this.silenceCountdown = null;
         this.lastSpeechTime = null;
-        this.SILENCE_LIMIT = 10; // 초
+        this.SILENCE_LIMIT = 10;
+
+        // Helsinki-NLP 번역 모델 매핑
+        this.translationModels = {
+            'ko-en': 'Helsinki-NLP/opus-mt-ko-en',
+            'en-ko': 'Helsinki-NLP/opus-mt-en-ko',
+            'ja-en': 'Helsinki-NLP/opus-mt-ja-en',
+            'en-ja': 'Helsinki-NLP/opus-mt-en-jap',
+            'zh-en': 'Helsinki-NLP/opus-mt-zh-en',
+            'en-zh': 'Helsinki-NLP/opus-mt-en-zh',
+            'es-en': 'Helsinki-NLP/opus-mt-es-en',
+            'en-es': 'Helsinki-NLP/opus-mt-en-es',
+            'fr-en': 'Helsinki-NLP/opus-mt-fr-en',
+            'en-fr': 'Helsinki-NLP/opus-mt-en-fr',
+            'de-en': 'Helsinki-NLP/opus-mt-de-en',
+            'en-de': 'Helsinki-NLP/opus-mt-en-de',
+            'ru-en': 'Helsinki-NLP/opus-mt-ru-en',
+            'en-ru': 'Helsinki-NLP/opus-mt-en-ru',
+            'pt-en': 'Helsinki-NLP/opus-mt-mul-en',
+            'en-pt': 'Helsinki-NLP/opus-mt-en-roa',
+            'ar-en': 'Helsinki-NLP/opus-mt-ar-en',
+            'en-ar': 'Helsinki-NLP/opus-mt-en-ar',
+            'vi-en': 'Helsinki-NLP/opus-mt-vi-en',
+            'en-vi': 'Helsinki-NLP/opus-mt-en-vi',
+            'th-en': 'Helsinki-NLP/opus-mt-th-en',
+            'en-th': 'Helsinki-NLP/opus-mt-en-mul',
+            'id-en': 'Helsinki-NLP/opus-mt-id-en',
+            'en-id': 'Helsinki-NLP/opus-mt-en-id',
+            'hi-en': 'Helsinki-NLP/opus-mt-hi-en',
+            'en-hi': 'Helsinki-NLP/opus-mt-en-hi'
+        };
 
         this.initElements();
         this.initSpeechRecognition();
@@ -34,6 +64,9 @@ class TranslateGemmaApp {
         this.swapBtn = document.getElementById('swapLang');
         this.status = document.getElementById('status');
         this.silenceTimer = document.getElementById('silenceTimer');
+        this.apiStatus = document.getElementById('apiStatus');
+        this.testApiBtn = document.getElementById('testApiBtn');
+        this.apiMessage = document.getElementById('apiMessage');
     }
 
     initSpeechRecognition() {
@@ -59,7 +92,6 @@ class TranslateGemmaApp {
         };
 
         this.recognition.onend = () => {
-            // continuous 모드에서 자동 재시작 (사용자가 중지하지 않은 경우)
             if (this.isListening) {
                 try {
                     this.recognition.start();
@@ -72,7 +104,6 @@ class TranslateGemmaApp {
         };
 
         this.recognition.onresult = (event) => {
-            // 음성 감지됨 - 타이머 리셋
             this.lastSpeechTime = Date.now();
             this.resetSilenceTimer();
 
@@ -88,13 +119,11 @@ class TranslateGemmaApp {
                 }
             }
 
-            // 현재 텍스트 표시
             const currentText = finalTranscript || interimTranscript;
             if (currentText) {
                 this.displaySourceText(currentText, !event.results[event.results.length - 1].isFinal);
             }
 
-            // 최종 결과면 번역 실행
             if (finalTranscript && finalTranscript.trim()) {
                 this.translateText(finalTranscript.trim());
             }
@@ -102,11 +131,7 @@ class TranslateGemmaApp {
 
         this.recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
-
-            if (event.error === 'no-speech') {
-                // 무음 - 타이머 계속
-                return;
-            }
+            if (event.error === 'no-speech') return;
 
             let errorMsg = '음성 인식 오류가 발생했습니다.';
             switch (event.error) {
@@ -116,13 +141,201 @@ class TranslateGemmaApp {
                 case 'not-allowed':
                     errorMsg = '마이크 권한이 거부되었습니다.';
                     break;
-                case 'network':
-                    errorMsg = '네트워크 오류가 발생했습니다.';
-                    break;
             }
-
             this.showStatus(errorMsg, 'error');
         };
+    }
+
+    initEventListeners() {
+        this.micBtn.addEventListener('click', () => this.toggleListening());
+        this.saveBtn.addEventListener('click', () => this.saveTranslation());
+        this.clearAllBtn.addEventListener('click', () => this.clearAll());
+        this.testApiBtn.addEventListener('click', () => this.testApiConnection());
+
+        this.sourceLang.addEventListener('change', () => {
+            this.updateLabels();
+            this.updateRecognitionLanguage();
+            this.saveSettings();
+        });
+
+        this.targetLang.addEventListener('change', () => {
+            this.updateLabels();
+            this.saveSettings();
+        });
+
+        this.swapBtn.addEventListener('click', () => this.swapLanguages());
+
+        this.apiKeyInput.addEventListener('input', () => {
+            this.apiKey = this.apiKeyInput.value;
+            localStorage.setItem('hf_api_key', this.apiKey);
+            // API 키 변경시 연결 상태 초기화
+            this.setApiStatus('disconnected');
+            this.apiConnected = false;
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && e.ctrlKey) {
+                e.preventDefault();
+                this.toggleListening();
+            }
+            if (e.code === 'KeyS' && e.ctrlKey) {
+                e.preventDefault();
+                this.saveTranslation();
+            }
+        });
+    }
+
+    loadSettings() {
+        if (this.apiKey) {
+            this.apiKeyInput.value = this.apiKey;
+            // 저장된 API 키가 있으면 자동 테스트
+            this.testApiConnection();
+        } else {
+            this.setApiStatus('disconnected');
+        }
+
+        const savedSourceLang = localStorage.getItem('sourceLang');
+        const savedTargetLang = localStorage.getItem('targetLang');
+
+        if (savedSourceLang) this.sourceLang.value = savedSourceLang;
+        if (savedTargetLang) this.targetLang.value = savedTargetLang;
+
+        this.updateLabels();
+        this.updateRecognitionLanguage();
+    }
+
+    saveSettings() {
+        localStorage.setItem('sourceLang', this.sourceLang.value);
+        localStorage.setItem('targetLang', this.targetLang.value);
+    }
+
+    setApiStatus(status) {
+        this.apiStatus.className = 'api-status ' + status;
+
+        switch (status) {
+            case 'disconnected':
+                this.apiStatus.title = 'API 미연결';
+                break;
+            case 'checking':
+                this.apiStatus.title = 'API 확인 중...';
+                break;
+            case 'connected':
+                this.apiStatus.title = 'API 연결됨';
+                break;
+        }
+    }
+
+    async testApiConnection() {
+        if (!this.apiKey || !this.apiKey.startsWith('hf_')) {
+            this.setApiStatus('disconnected');
+            this.apiMessage.textContent = 'API 키를 입력해주세요 (hf_로 시작)';
+            this.apiMessage.className = 'api-message error';
+            this.apiConnected = false;
+            return;
+        }
+
+        this.setApiStatus('checking');
+        this.apiMessage.textContent = '연결 테스트 중...';
+        this.apiMessage.className = 'api-message checking';
+        this.testApiBtn.disabled = true;
+
+        try {
+            // 간단한 번역 테스트
+            const response = await fetch(
+                'https://api-inference.huggingface.co/models/Helsinki-NLP/opus-mt-en-ko',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        inputs: 'Hello'
+                    })
+                }
+            );
+
+            if (response.status === 401) {
+                throw new Error('API 키가 유효하지 않습니다.');
+            }
+
+            if (response.status === 503) {
+                // 모델 로딩 중이지만 API 키는 유효
+                this.setApiStatus('connected');
+                this.apiMessage.textContent = '연결 성공! (모델 로딩 중일 수 있음)';
+                this.apiMessage.className = 'api-message success';
+                this.apiConnected = true;
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} 오류`);
+            }
+
+            const data = await response.json();
+
+            if (data && (data[0]?.translation_text || data.error?.includes('loading'))) {
+                this.setApiStatus('connected');
+                this.apiMessage.textContent = '연결 성공! 번역 준비 완료';
+                this.apiMessage.className = 'api-message success';
+                this.apiConnected = true;
+            } else {
+                throw new Error('응답 형식 오류');
+            }
+
+        } catch (error) {
+            console.error('API test error:', error);
+            this.setApiStatus('disconnected');
+            this.apiMessage.textContent = error.message;
+            this.apiMessage.className = 'api-message error';
+            this.apiConnected = false;
+        } finally {
+            this.testApiBtn.disabled = false;
+        }
+    }
+
+    updateLabels() {
+        const langNames = {
+            ko: '한국어', en: 'English', ja: '日本語', zh: '中文',
+            es: 'Español', fr: 'Français', de: 'Deutsch', pt: 'Português',
+            ru: 'Русский', ar: 'العربية', hi: 'हिन्दी', vi: 'Tiếng Việt',
+            th: 'ไทย', id: 'Bahasa Indonesia'
+        };
+
+        this.sourceLabel.textContent = `${langNames[this.sourceLang.value]} (음성 입력)`;
+        this.targetLabel.textContent = `${langNames[this.targetLang.value]} (번역)`;
+    }
+
+    updateRecognitionLanguage() {
+        if (this.recognition) {
+            const langCodes = {
+                ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', zh: 'zh-CN',
+                es: 'es-ES', fr: 'fr-FR', de: 'de-DE', pt: 'pt-BR',
+                ru: 'ru-RU', ar: 'ar-SA', hi: 'hi-IN', vi: 'vi-VN',
+                th: 'th-TH', id: 'id-ID'
+            };
+            this.recognition.lang = langCodes[this.sourceLang.value] || 'en-US';
+        }
+    }
+
+    toggleListening() {
+        if (!this.apiConnected) {
+            this.showStatus('먼저 API 연결을 확인해주세요. [연결 테스트] 버튼을 클릭하세요.', 'warning');
+            return;
+        }
+
+        if (this.isListening) {
+            this.stopListening();
+            this.showStatus('음성 인식이 중지되었습니다.', 'info');
+            setTimeout(() => this.hideStatus(), 2000);
+        } else {
+            this.updateRecognitionLanguage();
+            try {
+                this.recognition.start();
+            } catch (e) {
+                this.showStatus('음성 인식을 시작할 수 없습니다.', 'error');
+            }
+        }
     }
 
     startSilenceTimer() {
@@ -203,111 +416,6 @@ class TranslateGemmaApp {
         this.hideStatus();
     }
 
-    initEventListeners() {
-        // 시작/중지 버튼
-        this.micBtn.addEventListener('click', () => this.toggleListening());
-
-        // 저장 버튼
-        this.saveBtn.addEventListener('click', () => this.saveTranslation());
-
-        // 지우기 버튼
-        this.clearAllBtn.addEventListener('click', () => this.clearAll());
-
-        // 언어 선택 변경
-        this.sourceLang.addEventListener('change', () => {
-            this.updateLabels();
-            this.updateRecognitionLanguage();
-            this.saveSettings();
-        });
-
-        this.targetLang.addEventListener('change', () => {
-            this.updateLabels();
-            this.saveSettings();
-        });
-
-        // 언어 교환
-        this.swapBtn.addEventListener('click', () => this.swapLanguages());
-
-        // API 키 저장
-        this.apiKeyInput.addEventListener('change', () => {
-            this.apiKey = this.apiKeyInput.value;
-            localStorage.setItem('hf_api_key', this.apiKey);
-            this.showStatus('API 키가 저장되었습니다.', 'success');
-            setTimeout(() => this.hideStatus(), 2000);
-        });
-
-        // 키보드 단축키
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && e.ctrlKey) {
-                e.preventDefault();
-                this.toggleListening();
-            }
-            if (e.code === 'KeyS' && e.ctrlKey) {
-                e.preventDefault();
-                this.saveTranslation();
-            }
-        });
-    }
-
-    loadSettings() {
-        if (this.apiKey) {
-            this.apiKeyInput.value = this.apiKey;
-        }
-
-        const savedSourceLang = localStorage.getItem('sourceLang');
-        const savedTargetLang = localStorage.getItem('targetLang');
-
-        if (savedSourceLang) this.sourceLang.value = savedSourceLang;
-        if (savedTargetLang) this.targetLang.value = savedTargetLang;
-
-        this.updateLabels();
-        this.updateRecognitionLanguage();
-    }
-
-    saveSettings() {
-        localStorage.setItem('sourceLang', this.sourceLang.value);
-        localStorage.setItem('targetLang', this.targetLang.value);
-    }
-
-    updateLabels() {
-        const langNames = {
-            ko: '한국어', en: 'English', ja: '日本語', zh: '中文',
-            es: 'Español', fr: 'Français', de: 'Deutsch', pt: 'Português',
-            ru: 'Русский', ar: 'العربية', hi: 'हिन्दी', vi: 'Tiếng Việt',
-            th: 'ไทย', id: 'Bahasa Indonesia'
-        };
-
-        this.sourceLabel.textContent = `${langNames[this.sourceLang.value]} (음성 입력)`;
-        this.targetLabel.textContent = `${langNames[this.targetLang.value]} (번역)`;
-    }
-
-    updateRecognitionLanguage() {
-        if (this.recognition) {
-            const langCodes = {
-                ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', zh: 'zh-CN',
-                es: 'es-ES', fr: 'fr-FR', de: 'de-DE', pt: 'pt-BR',
-                ru: 'ru-RU', ar: 'ar-SA', hi: 'hi-IN', vi: 'vi-VN',
-                th: 'th-TH', id: 'id-ID'
-            };
-            this.recognition.lang = langCodes[this.sourceLang.value] || 'en-US';
-        }
-    }
-
-    toggleListening() {
-        if (this.isListening) {
-            this.stopListening();
-            this.showStatus('음성 인식이 중지되었습니다.', 'info');
-            setTimeout(() => this.hideStatus(), 2000);
-        } else {
-            this.updateRecognitionLanguage();
-            try {
-                this.recognition.start();
-            } catch (e) {
-                this.showStatus('음성 인식을 시작할 수 없습니다.', 'error');
-            }
-        }
-    }
-
     swapLanguages() {
         const temp = this.sourceLang.value;
         this.sourceLang.value = this.targetLang.value;
@@ -359,18 +467,8 @@ class TranslateGemmaApp {
         this.targetText.innerHTML = tempHtml;
         this.targetText.scrollTop = this.targetText.scrollHeight;
 
-        const langNames = {
-            ko: 'Korean', en: 'English', ja: 'Japanese', zh: 'Chinese',
-            es: 'Spanish', fr: 'French', de: 'German', pt: 'Portuguese',
-            ru: 'Russian', ar: 'Arabic', hi: 'Hindi', vi: 'Vietnamese',
-            th: 'Thai', id: 'Indonesian'
-        };
-
-        const sourceLangName = langNames[this.sourceLang.value];
-        const targetLangName = langNames[this.targetLang.value];
-
         try {
-            let translation = await this.callTranslationAPI(text, sourceLangName, targetLangName);
+            const translation = await this.callTranslationAPI(text);
 
             if (translation) {
                 this.translationHistory.push({
@@ -390,88 +488,93 @@ class TranslateGemmaApp {
         }
     }
 
-    async callTranslationAPI(text, sourceLang, targetLang) {
-        // 여러 모델 시도
-        const models = [
-            'google/gemma-3-4b-it',
-            'google/gemma-2-2b-it',
-            'mistralai/Mistral-7B-Instruct-v0.3'
-        ];
+    async callTranslationAPI(text) {
+        const sourceLang = this.sourceLang.value;
+        const targetLang = this.targetLang.value;
 
-        const prompt = `Translate the following text from ${sourceLang} to ${targetLang}. Only output the translation, nothing else.
+        // 직접 번역 모델 찾기
+        let modelKey = `${sourceLang}-${targetLang}`;
+        let model = this.translationModels[modelKey];
 
-Text: ${text}
+        // 직접 모델이 없으면 영어를 거쳐 번역
+        let needsPivot = false;
+        if (!model && sourceLang !== 'en' && targetLang !== 'en') {
+            needsPivot = true;
+        }
 
-Translation:`;
+        if (needsPivot) {
+            // 소스 → 영어 → 타겟 (피벗 번역)
+            const toEnglish = await this.translateWithModel(text, `${sourceLang}-en`);
+            if (toEnglish) {
+                const toTarget = await this.translateWithModel(toEnglish, `en-${targetLang}`);
+                return toTarget;
+            }
+            throw new Error('번역 실패');
+        } else {
+            return await this.translateWithModel(text, modelKey);
+        }
+    }
 
-        for (const model of models) {
-            try {
-                const response = await fetch(
-                    `https://api-inference.huggingface.co/models/${model}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${this.apiKey}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            inputs: prompt,
-                            parameters: {
-                                max_new_tokens: 256,
-                                temperature: 0.3,
-                                do_sample: true,
-                                return_full_text: false
-                            }
-                        })
-                    }
-                );
+    async translateWithModel(text, langPair) {
+        let model = this.translationModels[langPair];
 
-                if (response.status === 503) {
-                    // 모델 로딩 중 - 다음 모델 시도
-                    console.log(`Model ${model} is loading, trying next...`);
-                    continue;
-                }
-
-                if (response.status === 401) {
-                    throw new Error('API 키가 유효하지 않습니다.');
-                }
-
-                if (!response.ok) {
-                    continue;
-                }
-
-                const data = await response.json();
-                let translation = '';
-
-                if (Array.isArray(data) && data[0]?.generated_text) {
-                    translation = data[0].generated_text;
-                } else if (data.generated_text) {
-                    translation = data.generated_text;
-                } else if (Array.isArray(data) && typeof data[0] === 'string') {
-                    translation = data[0];
-                }
-
-                if (translation) {
-                    // 불필요한 부분 정리
-                    translation = translation
-                        .replace(/^Translation:\s*/i, '')
-                        .replace(/<[^>]*>/g, '')
-                        .split('\n')[0]
-                        .trim();
-
-                    if (translation && translation !== text) {
-                        return translation;
-                    }
-                }
-            } catch (e) {
-                console.error(`Error with model ${model}:`, e);
-                if (e.message.includes('API 키')) {
-                    throw e;
-                }
+        // 모델이 없으면 다국어 모델 사용
+        if (!model) {
+            if (langPair.endsWith('-en')) {
+                model = 'Helsinki-NLP/opus-mt-mul-en';
+            } else if (langPair.startsWith('en-')) {
+                model = 'Helsinki-NLP/opus-mt-en-mul';
+            } else {
+                throw new Error(`지원하지 않는 언어 조합: ${langPair}`);
             }
         }
 
-        throw new Error('번역 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+        const response = await fetch(
+            `https://api-inference.huggingface.co/models/${model}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    inputs: text,
+                    options: {
+                        wait_for_model: true
+                    }
+                })
+            }
+        );
+
+        if (response.status === 401) {
+            this.setApiStatus('disconnected');
+            this.apiConnected = false;
+            throw new Error('API 키가 유효하지 않습니다.');
+        }
+
+        if (response.status === 503) {
+            const errorData = await response.json();
+            if (errorData.estimated_time) {
+                throw new Error(`모델 로딩 중... ${Math.ceil(errorData.estimated_time)}초 후 다시 시도해주세요.`);
+            }
+            throw new Error('모델 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} 오류`);
+        }
+
+        const data = await response.json();
+
+        if (Array.isArray(data) && data[0]?.translation_text) {
+            return data[0].translation_text;
+        } else if (data.translation_text) {
+            return data.translation_text;
+        } else if (Array.isArray(data) && typeof data[0] === 'string') {
+            return data[0];
+        }
+
+        throw new Error('번역 응답 형식 오류');
     }
 
     clearAll() {

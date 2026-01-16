@@ -60,8 +60,17 @@
 
             <div class="api-settings">
                 <label for="apiKey">Hugging Face API Key</label>
-                <input type="password" id="apiKey" placeholder="hf_xxxxxxxxxxxx">
+                <div class="api-input-row">
+                    <input type="password" id="apiKey" placeholder="hf_xxxxxxxxxxxx">
+                    <div id="apiStatus" class="api-status" title="API 연결 상태">
+                        <span class="light red"></span>
+                        <span class="light yellow"></span>
+                        <span class="light green"></span>
+                    </div>
+                    <button id="testApiBtn" class="test-api-btn">연결 테스트</button>
+                </div>
                 <small>무료 API 키: <a href="https://huggingface.co/settings/tokens" target="_blank">huggingface.co/settings/tokens</a></small>
+                <div id="apiMessage" class="api-message"></div>
             </div>
         </div>
 
