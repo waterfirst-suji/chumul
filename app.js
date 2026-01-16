@@ -235,12 +235,15 @@ class TranslateGemmaApp {
         }
 
         this.setApiStatus('checking');
-        this.apiMessage.textContent = '연결 테스트 중...';
+        this.apiMessage.textContent = '연결 테스트 중... (최대 30초 소요)';
         this.apiMessage.className = 'api-message checking';
         this.testApiBtn.disabled = true;
 
+        // 30초 타임아웃 설정
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
         try {
-            // 간단한 번역 테스트
             const response = await fetch(
                 'https://api-inference.huggingface.co/models/Helsinki-NLP/opus-mt-en-ko',
                 {
@@ -250,26 +253,37 @@ class TranslateGemmaApp {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        inputs: 'Hello'
-                    })
+                        inputs: 'Hello',
+                        options: {
+                            wait_for_model: true
+                        }
+                    }),
+                    signal: controller.signal
                 }
             );
 
+            clearTimeout(timeoutId);
+
             if (response.status === 401) {
-                throw new Error('API 키가 유효하지 않습니다.');
+                throw new Error('API 키가 유효하지 않습니다. 권한을 확인하세요.');
+            }
+
+            if (response.status === 403) {
+                throw new Error('API 접근 권한이 없습니다. Inference 권한을 확인하세요.');
             }
 
             if (response.status === 503) {
                 // 모델 로딩 중이지만 API 키는 유효
                 this.setApiStatus('connected');
-                this.apiMessage.textContent = '연결 성공! (모델 로딩 중일 수 있음)';
+                this.apiMessage.textContent = '연결 성공! (모델 로딩 중, 잠시 후 번역 가능)';
                 this.apiMessage.className = 'api-message success';
                 this.apiConnected = true;
                 return;
             }
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status} 오류`);
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
             }
 
             const data = await response.json();
@@ -279,14 +293,28 @@ class TranslateGemmaApp {
                 this.apiMessage.textContent = '연결 성공! 번역 준비 완료';
                 this.apiMessage.className = 'api-message success';
                 this.apiConnected = true;
+            } else if (Array.isArray(data)) {
+                this.setApiStatus('connected');
+                this.apiMessage.textContent = '연결 성공!';
+                this.apiMessage.className = 'api-message success';
+                this.apiConnected = true;
             } else {
                 throw new Error('응답 형식 오류');
             }
 
         } catch (error) {
+            clearTimeout(timeoutId);
             console.error('API test error:', error);
             this.setApiStatus('disconnected');
-            this.apiMessage.textContent = error.message;
+
+            if (error.name === 'AbortError') {
+                this.apiMessage.textContent = '연결 시간 초과. 네트워크를 확인하세요.';
+            } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                this.apiMessage.textContent = '네트워크 오류. 인터넷 연결을 확인하세요.';
+            } else {
+                this.apiMessage.textContent = error.message;
+            }
+
             this.apiMessage.className = 'api-message error';
             this.apiConnected = false;
         } finally {
